@@ -19,6 +19,7 @@ import streamlit as st
 START_DATE = datetime(2018, 1, 1)
 
 
+
 def _get_secret(name: str) -> str | None:
     """Return a secret from the environment or Streamlit secrets."""
     value = os.getenv(name)
@@ -34,6 +35,7 @@ def _get_secret(name: str) -> str | None:
 def fetch_fred(series: str) -> pd.DataFrame:
     """Return a DataFrame for a given FRED series using the FRED API."""
     api_key = _get_secret("FRED_API_KEY")
+
     url = "https://api.stlouisfed.org/fred/series/observations"
     params = {
         "series_id": series,
