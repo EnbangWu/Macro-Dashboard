@@ -1,10 +1,8 @@
 # Macro Dashboard
 
-This repository contains a simple Streamlit application that displays key U.S. macroeconomic indicators using data from the FRED database.
+This Streamlit application visualizes key U.S. macroeconomic indicators using live data from the FRED and BLS APIs.
 
 ## Requirements
-
-Install the dependencies with:
 
 ```bash
 pip install -r requirements.txt
@@ -12,10 +10,17 @@ pip install -r requirements.txt
 
 ## Usage
 
-Run the Streamlit app with:
+Set a `FRED_API_KEY` environment variable if you need access to restricted FRED
+series and run:
 
 ```bash
 streamlit run dashboard.py
 ```
 
-The app shows line charts for non-farm payrolls, CPI, PCE, the Fed funds rate and the 10-year Treasury yield. A sidebar lists upcoming release dates for major indicators.
+If the `streamlit` command is unavailable, you can instead launch the app with:
+
+```bash
+python dashboard.py
+```
+
+The dashboard displays metrics for employment, inflation and interest rates along with trend charts and a small events sidebar.
