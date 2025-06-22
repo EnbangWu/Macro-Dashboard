@@ -46,6 +46,7 @@ def fetch_fred(series: str) -> pd.DataFrame:
         return out[["date", "value"]]
 
 
+
 @st.cache_data(show_spinner=False)
 def fetch_bls(series_id: str) -> pd.DataFrame:
     """Fetch a monthly series from the BLS public API."""
@@ -75,13 +76,16 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("date")
 
 
+
 st.set_page_config(page_title="US Macro Dashboard", layout="wide")
 
 # Load series
+
 # Use official BLS series identifiers
 series_map = {
     "CEU0000000001": "Non-Farm Payrolls (thous)",
     "LNS14000000": "Unemployment Rate (%)",
+
     "CES0500000003": "Avg Hourly Earnings (USD)",
     "CPIAUCSL": "CPI",
     "CPILFESL": "Core CPI",
@@ -91,8 +95,10 @@ series_map = {
 }
 
 fred_ids = ["CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE", "FEDFUNDS"]
+
 # BLS series IDs (payrolls, unemployment rate, hourly earnings)
 bls_ids = ["CEU0000000001", "LNS14000000", "CES0500000003"]
+
 
 data_frames = {}
 for sid in fred_ids:
@@ -113,12 +119,14 @@ core_pce = data_frames["PCEPILFE"].set_index("date")
 core_pce["yoy"] = core_pce["value"].pct_change(12) * 100
 
 # Latest metrics
+
 latest: dict[str, float] = {}
 for sid, df in data_frames.items():
     if df.empty:
         latest[sid] = float("nan")
         latest[f"prev_{sid}"] = float("nan")
         continue
+
     latest[sid] = df.iloc[-1]["value"]
     if len(df) > 1:
         latest[f"prev_{sid}"] = df.iloc[-2]["value"]
@@ -171,6 +179,7 @@ combo = (
 )
 st.altair_chart(combo, use_container_width=True)
 
+
 with st.sidebar:
     st.header("Upcoming Events")
     events = pd.DataFrame(
@@ -190,3 +199,4 @@ if __name__ == "__main__":
 
         sys.argv = ["streamlit", "run", __file__]
         sys.exit(stcli.main())
+
