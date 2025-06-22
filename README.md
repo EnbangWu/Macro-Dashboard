@@ -1,6 +1,7 @@
 # Macro Dashboard
 
 This Streamlit application visualizes key U.S. macroeconomic indicators using live data from the FRED and BLS APIs.
+All FRED series are retrieved directly via the FRED REST API using the ``requests`` library.
 
 ## Requirements
 
