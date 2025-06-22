@@ -1,8 +1,9 @@
 """Streamlit-based US macroeconomic dashboard using live API data.
 
 This app fetches macroeconomic indicators from FRED and the BLS public API
-and visualizes recent trends.  A FRED API key can be supplied via the
-``FRED_API_KEY`` environment variable for series that require it.
+and visualizes recent trends. A FRED API key can be supplied via the
+``FRED_API_KEY`` environment variable or placed in ``.streamlit/secrets.toml``
+for Streamlit Cloud deployments.
 """
 
 from __future__ import annotations
@@ -12,38 +13,41 @@ from datetime import datetime
 
 import altair as alt
 import pandas as pd
-import pandas_datareader.data as web
 import requests
 import streamlit as st
 
 START_DATE = datetime(2018, 1, 1)
 
 
+def _get_secret(name: str) -> str | None:
+    """Return a secret from the environment or Streamlit secrets."""
+    value = os.getenv(name)
+    if value:
+        return value
+    try:
+        return st.secrets[name]
+    except Exception:
+        return None
+
+
 @st.cache_data(show_spinner=False)
 def fetch_fred(series: str) -> pd.DataFrame:
-    """Return a DataFrame for a given FRED series."""
-    try:
-        df = web.DataReader(series, "fred", START_DATE, datetime.today())
-        df = df.reset_index().rename(columns={series: "value", "DATE": "date"})
-        return df
-    except Exception:
-        # fallback to FRED API if pandas_datareader fails
-        api_key = st.secrets.get("FRED_API_KEY") or os.getenv("FRED_API_KEY")
-        if not api_key:
-            raise
-        url = "https://api.stlouisfed.org/fred/series/observations"
-        params = {
-            "series_id": series,
-            "api_key": api_key,
-            "file_type": "json",
-            "observation_start": START_DATE.strftime("%Y-%m-%d"),
-        }
-        r = requests.get(url, params=params, timeout=20)
-        r.raise_for_status()
-        out = pd.DataFrame(r.json()["observations"])
-        out["date"] = pd.to_datetime(out["date"])
-        out["value"] = pd.to_numeric(out["value"], errors="coerce")
-        return out[["date", "value"]]
+    """Return a DataFrame for a given FRED series using the FRED API."""
+    api_key = _get_secret("FRED_API_KEY")
+    url = "https://api.stlouisfed.org/fred/series/observations"
+    params = {
+        "series_id": series,
+        "file_type": "json",
+        "observation_start": START_DATE.strftime("%Y-%m-%d"),
+    }
+    if api_key:
+        params["api_key"] = api_key
+    r = requests.get(url, params=params, timeout=20)
+    r.raise_for_status()
+    out = pd.DataFrame(r.json().get("observations", []))
+    out["date"] = pd.to_datetime(out["date"])
+    out["value"] = pd.to_numeric(out["value"], errors="coerce")
+    return out[["date", "value"]]
 
 
 
