@@ -46,6 +46,7 @@ def fetch_fred(series: str) -> pd.DataFrame:
         return out[["date", "value"]]
 
 
+
 @st.cache_data(show_spinner=False)
 def fetch_bls(series_id: str) -> pd.DataFrame:
     """Fetch a monthly series from the BLS public API."""
@@ -57,7 +58,6 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     url = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
     r = requests.post(url, json=payload, timeout=20)
     r.raise_for_status()
-
     series = (
         r.json()
         .get("Results", {})
@@ -67,12 +67,10 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     rows: list[dict[str, float | pd.Timestamp]] = []
     for item in series:
         if item.get("period") == "M13":  # annual
-
             continue
         month = int(item["period"][1:])
         date = pd.to_datetime(f"{item['year']}-{month:02d}-01")
         rows.append({"date": date, "value": float(item["value"])})
-
     if not rows:
         return pd.DataFrame(columns=["date", "value"])
     return pd.DataFrame(rows).sort_values("date")
@@ -121,8 +119,14 @@ core_pce = data_frames["PCEPILFE"].set_index("date")
 core_pce["yoy"] = core_pce["value"].pct_change(12) * 100
 
 # Latest metrics
-latest = {}
+
+latest: dict[str, float] = {}
 for sid, df in data_frames.items():
+    if df.empty:
+        latest[sid] = float("nan")
+        latest[f"prev_{sid}"] = float("nan")
+        continue
+
     latest[sid] = df.iloc[-1]["value"]
     if len(df) > 1:
         latest[f"prev_{sid}"] = df.iloc[-2]["value"]
@@ -175,6 +179,7 @@ combo = (
 )
 st.altair_chart(combo, use_container_width=True)
 
+
 with st.sidebar:
     st.header("Upcoming Events")
     events = pd.DataFrame(
@@ -187,7 +192,11 @@ with st.sidebar:
 
 if __name__ == "__main__":
     import sys
-    import streamlit.web.cli as stcli
+    import streamlit.runtime as st_runtime
 
-    sys.argv = ["streamlit", "run", __file__]
-    sys.exit(stcli.main())
+    if not st_runtime.exists():
+        import streamlit.web.cli as stcli
+
+        sys.argv = ["streamlit", "run", __file__]
+        sys.exit(stcli.main())
+
