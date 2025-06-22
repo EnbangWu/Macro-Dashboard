@@ -57,6 +57,7 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     url = "https://api.bls.gov/publicAPI/v2/timeseries/data/"
     r = requests.post(url, json=payload, timeout=20)
     r.raise_for_status()
+
     series = (
         r.json()
         .get("Results", {})
@@ -66,22 +67,27 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     rows: list[dict[str, float | pd.Timestamp]] = []
     for item in series:
         if item.get("period") == "M13":  # annual
+
             continue
         month = int(item["period"][1:])
         date = pd.to_datetime(f"{item['year']}-{month:02d}-01")
         rows.append({"date": date, "value": float(item["value"])})
+
     if not rows:
         return pd.DataFrame(columns=["date", "value"])
     return pd.DataFrame(rows).sort_values("date")
 
 
+
 st.set_page_config(page_title="US Macro Dashboard", layout="wide")
 
 # Load series
+
 # Use official BLS series identifiers
 series_map = {
     "CEU0000000001": "Non-Farm Payrolls (thous)",
     "LNS14000000": "Unemployment Rate (%)",
+
     "CES0500000003": "Avg Hourly Earnings (USD)",
     "CPIAUCSL": "CPI",
     "CPILFESL": "Core CPI",
@@ -91,8 +97,10 @@ series_map = {
 }
 
 fred_ids = ["CPIAUCSL", "CPILFESL", "PCEPI", "PCEPILFE", "FEDFUNDS"]
+
 # BLS series IDs (payrolls, unemployment rate, hourly earnings)
 bls_ids = ["CEU0000000001", "LNS14000000", "CES0500000003"]
+
 
 data_frames = {}
 for sid in fred_ids:
