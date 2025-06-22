@@ -1,8 +1,9 @@
 """Streamlit-based US macroeconomic dashboard using live API data.
 
 This app fetches macroeconomic indicators from FRED and the BLS public API
-and visualizes recent trends.  A FRED API key can be supplied via the
-``FRED_API_KEY`` environment variable for series that require it.
+and visualizes recent trends. A FRED API key can be supplied via the
+``FRED_API_KEY`` environment variable or placed in ``.streamlit/secrets.toml``
+for Streamlit Cloud deployments.
 """
 
 from __future__ import annotations
@@ -18,10 +19,23 @@ import streamlit as st
 START_DATE = datetime(2018, 1, 1)
 
 
+
+def _get_secret(name: str) -> str | None:
+    """Return a secret from the environment or Streamlit secrets."""
+    value = os.getenv(name)
+    if value:
+        return value
+    try:
+        return st.secrets[name]
+    except Exception:
+        return None
+
+
 @st.cache_data(show_spinner=False)
 def fetch_fred(series: str) -> pd.DataFrame:
     """Return a DataFrame for a given FRED series using the FRED API."""
-    api_key = st.secrets.get("FRED_API_KEY") or os.getenv("FRED_API_KEY")
+    api_key = _get_secret("FRED_API_KEY")
+
     url = "https://api.stlouisfed.org/fred/series/observations"
     params = {
         "series_id": series,

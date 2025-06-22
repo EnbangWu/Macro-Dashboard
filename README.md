@@ -11,8 +11,9 @@ pip install -r requirements.txt
 
 ## Usage
 
-Set a `FRED_API_KEY` environment variable if you need access to restricted FRED
-series and run:
+Set a `FRED_API_KEY` environment variable (or provide it in
+`.streamlit/secrets.toml` when using Streamlit Cloud) if you need access to
+restricted FRED series and run:
 
 ```bash
 streamlit run dashboard.py
