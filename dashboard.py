@@ -160,35 +160,40 @@ infl_df = pd.DataFrame(
     }
 ).melt("date", var_name="series", value_name="value")
 
-# Add a hover selection so values appear even when the cursor is not
-# exactly over a line
-hover = alt.selection_point(
+# Hover across the x-axis and display all series values at once
+infl_hover = alt.selection_point(
     on="pointermove",
     fields=["date"],
     nearest=True,
     empty="none",
 )
-base = (
+infl_lines = (
     alt.Chart(infl_df)
+    .mark_line()
     .encode(x="date:T", y="value:Q", color="series:N")
 )
-lines = base.mark_line()
-points = (
-    base.mark_point()
-    .encode(
-        tooltip=["series:N", "date:T", "value:Q"],
-        opacity=alt.condition(hover, alt.value(1), alt.value(0)),
-    )
-    .add_params(hover)
-)
-rule = (
+infl_points = infl_lines.mark_point().encode(
+    opacity=alt.condition(infl_hover, alt.value(1), alt.value(0))
+).add_params(infl_hover)
+infl_tooltips = (
     alt.Chart(infl_df)
+    .transform_pivot("series", value="value", groupby=["date"])
     .mark_rule(color="gray")
-    .encode(x="date:T")
-    .transform_filter(hover)
+    .encode(
+        x="date:T",
+        opacity=alt.condition(infl_hover, alt.value(0.3), alt.value(0)),
+        tooltip=[
+            "date:T",
+            alt.Tooltip("CPI YoY:Q", title="CPI YoY", format=".2f"),
+            alt.Tooltip("Core CPI YoY:Q", title="Core CPI YoY", format=".2f"),
+            alt.Tooltip("PCE YoY:Q", title="PCE YoY", format=".2f"),
+            alt.Tooltip("Core PCE YoY:Q", title="Core PCE YoY", format=".2f"),
+        ],
+    )
+    .add_params(infl_hover)
 )
-chart = alt.layer(lines, rule, points).properties(height=300)
-st.altair_chart(chart, use_container_width=True)
+infl_chart = alt.layer(infl_lines, infl_points, infl_tooltips).properties(height=300)
+st.altair_chart(infl_chart, use_container_width=True)
 
 st.subheader("Fed Funds Rate")
 rate_hover = alt.selection_point(
@@ -217,13 +222,17 @@ rate_chart = alt.layer(rate_line, rate_rule, rate_points).properties(height=300)
 st.altair_chart(rate_chart, use_container_width=True)
 
 st.subheader("CPI vs Fed Funds Rate")
-combo_df = pd.concat(
-    [
-        cpi["yoy"].rename("CPI YoY"),
-        data_frames["FEDFUNDS"].set_index("date")["value"].rename("Fed Funds Rate"),
-    ],
-    axis=1,
-).reset_index().melt("date", var_name="series", value_name="value")
+combo_df = (
+    pd.concat(
+        [
+            cpi["yoy"].rename("CPI YoY"),
+            data_frames["FEDFUNDS"].set_index("date")["value"].rename("Fed Funds Rate"),
+        ],
+        axis=1,
+    )
+    .reset_index()
+    .melt("date", var_name="series", value_name="value")
+)
 
 combo_hover = alt.selection_point(
     on="pointermove",
@@ -231,28 +240,52 @@ combo_hover = alt.selection_point(
     nearest=True,
     empty="none",
 )
-combo_base = alt.Chart(combo_df).encode(
-    x="date:T",
-    y="value:Q",
-    color="series:N",
+combo_lines = (
+    alt.Chart(combo_df)
+    .mark_line()
+    .encode(x="date:T", y="value:Q", color="series:N")
 )
-combo_lines = combo_base.mark_line()
-combo_points = (
-    combo_base.mark_point()
+combo_points = combo_lines.mark_point().encode(
+    opacity=alt.condition(combo_hover, alt.value(1), alt.value(0))
+).add_params(combo_hover)
+combo_tooltips = (
+    alt.Chart(combo_df)
+    .transform_pivot("series", value="value", groupby=["date"])
+    .mark_rule(color="gray")
     .encode(
-        tooltip=["series:N", "date:T", "value:Q"],
-        opacity=alt.condition(combo_hover, alt.value(1), alt.value(0)),
+        x="date:T",
+        opacity=alt.condition(combo_hover, alt.value(0.3), alt.value(0)),
+        tooltip=[
+            "date:T",
+            alt.Tooltip("CPI YoY:Q", title="CPI YoY", format=".2f"),
+            alt.Tooltip("Fed Funds Rate:Q", title="Fed Funds Rate", format=".2f"),
+        ],
     )
     .add_params(combo_hover)
 )
-combo_rule = (
-    alt.Chart(combo_df)
-    .mark_rule(color="gray")
-    .encode(x="date:T")
-    .transform_filter(combo_hover)
-)
-combo_chart = alt.layer(combo_lines, combo_rule, combo_points).properties(height=300)
+combo_chart = alt.layer(combo_lines, combo_points, combo_tooltips).properties(height=300)
 st.altair_chart(combo_chart, use_container_width=True)
+
+st.subheader("All Series Data")
+all_series_df = (
+    pd.concat(
+        [
+            df.set_index("date")["value"].rename(series_map.get(sid, sid))
+            for sid, df in data_frames.items()
+        ],
+        axis=1,
+    )
+    .reset_index()
+    .sort_values("date")
+)
+st.dataframe(all_series_df, use_container_width=True)
+csv = all_series_df.to_csv(index=False).encode("utf-8")
+st.download_button(
+    label="Download All Data",
+    data=csv,
+    file_name="all_series.csv",
+    mime="text/csv",
+)
 
 
 with st.sidebar:
