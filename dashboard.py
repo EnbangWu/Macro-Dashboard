@@ -266,28 +266,6 @@ combo_tooltips = (
 combo_chart = alt.layer(combo_lines, combo_points, combo_tooltips).properties(height=300)
 st.altair_chart(combo_chart, use_container_width=True)
 
-st.subheader("All Series Data")
-all_series_df = (
-    pd.concat(
-        [
-            df.set_index("date")["value"].rename(series_map.get(sid, sid))
-            for sid, df in data_frames.items()
-        ],
-        axis=1,
-    )
-    .reset_index()
-    .sort_values("date")
-)
-st.dataframe(all_series_df, use_container_width=True)
-csv = all_series_df.to_csv(index=False).encode("utf-8")
-st.download_button(
-    label="Download All Data",
-    data=csv,
-    file_name="all_series.csv",
-    mime="text/csv",
-)
-
-
 with st.sidebar:
     st.header("Upcoming Events")
     events = pd.DataFrame(
