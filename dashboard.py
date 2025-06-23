@@ -150,40 +150,109 @@ for i, sid in enumerate(series_map.keys()):
         st.metric(series_map[sid], f"{val:.2f}", delta=None if delta is None else f"{delta:.2f}")
 
 st.subheader("Inflation Trends")
-infl_df = pd.DataFrame({
-    "date": cpi.index,
-    "CPI YoY": cpi["yoy"],
-    "Core CPI YoY": core_cpi["yoy"],
-    "PCE YoY": pce["yoy"],
-    "Core PCE YoY": core_pce["yoy"],
-}).melt("date", var_name="series", value_name="value")
-chart = (
-    alt.Chart(infl_df)
-    .mark_line()
-    .encode(x="date:T", y="value:Q", color="series:N")
-    .properties(height=300)
+infl_df = pd.DataFrame(
+    {
+        "date": cpi.index,
+        "CPI YoY": cpi["yoy"],
+        "Core CPI YoY": core_cpi["yoy"],
+        "PCE YoY": pce["yoy"],
+        "Core PCE YoY": core_pce["yoy"],
+    }
+).melt("date", var_name="series", value_name="value")
+
+# Add a hover selection so values appear even when the cursor is not
+# exactly over a line
+hover = alt.selection_point(
+    on="pointermove",
+    fields=["date"],
+    nearest=True,
+    empty="none",
 )
+base = (
+    alt.Chart(infl_df)
+    .encode(x="date:T", y="value:Q", color="series:N")
+)
+lines = base.mark_line()
+points = (
+    base.mark_point()
+    .encode(
+        tooltip=["series:N", "date:T", "value:Q"],
+        opacity=alt.condition(hover, alt.value(1), alt.value(0)),
+    )
+    .add_params(hover)
+)
+rule = (
+    alt.Chart(infl_df)
+    .mark_rule(color="gray")
+    .encode(x="date:T")
+    .transform_filter(hover)
+)
+chart = alt.layer(lines, rule, points).properties(height=300)
 st.altair_chart(chart, use_container_width=True)
 
 st.subheader("Fed Funds Rate")
-rate_chart = (
-    alt.Chart(data_frames["FEDFUNDS"])
-    .mark_line(color="orange")
-    .encode(x="date:T", y="value:Q")
+rate_hover = alt.selection_point(
+    on="pointermove",
+    fields=["date"],
+    nearest=True,
+    empty="none",
 )
+rate_base = alt.Chart(data_frames["FEDFUNDS"]).encode(x="date:T", y="value:Q")
+rate_line = rate_base.mark_line(color="orange")
+rate_points = (
+    rate_base.mark_point(color="orange")
+    .encode(
+        tooltip=["date:T", "value:Q"],
+        opacity=alt.condition(rate_hover, alt.value(1), alt.value(0)),
+    )
+    .add_params(rate_hover)
+)
+rate_rule = (
+    alt.Chart(data_frames["FEDFUNDS"])
+    .mark_rule(color="gray")
+    .encode(x="date:T")
+    .transform_filter(rate_hover)
+)
+rate_chart = alt.layer(rate_line, rate_rule, rate_points).properties(height=300)
 st.altair_chart(rate_chart, use_container_width=True)
 
 st.subheader("CPI vs Fed Funds Rate")
-combo = (
-    alt.Chart(cpi.reset_index())
-    .mark_line(color="steelblue")
-    .encode(x="date:T", y="yoy:Q")
-    +
-    alt.Chart(data_frames["FEDFUNDS"])
-    .mark_line(color="orange")
-    .encode(x="date:T", y="value:Q")
+combo_df = pd.concat(
+    [
+        cpi["yoy"].rename("CPI YoY"),
+        data_frames["FEDFUNDS"].set_index("date")["value"].rename("Fed Funds Rate"),
+    ],
+    axis=1,
+).reset_index().melt("date", var_name="series", value_name="value")
+
+combo_hover = alt.selection_point(
+    on="pointermove",
+    fields=["date"],
+    nearest=True,
+    empty="none",
 )
-st.altair_chart(combo, use_container_width=True)
+combo_base = alt.Chart(combo_df).encode(
+    x="date:T",
+    y="value:Q",
+    color="series:N",
+)
+combo_lines = combo_base.mark_line()
+combo_points = (
+    combo_base.mark_point()
+    .encode(
+        tooltip=["series:N", "date:T", "value:Q"],
+        opacity=alt.condition(combo_hover, alt.value(1), alt.value(0)),
+    )
+    .add_params(combo_hover)
+)
+combo_rule = (
+    alt.Chart(combo_df)
+    .mark_rule(color="gray")
+    .encode(x="date:T")
+    .transform_filter(combo_hover)
+)
+combo_chart = alt.layer(combo_lines, combo_rule, combo_points).properties(height=300)
+st.altair_chart(combo_chart, use_container_width=True)
 
 
 with st.sidebar:
