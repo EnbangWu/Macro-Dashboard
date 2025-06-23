@@ -266,6 +266,7 @@ combo_tooltips = (
 combo_chart = alt.layer(combo_lines, combo_points, combo_tooltips).properties(height=300)
 st.altair_chart(combo_chart, use_container_width=True)
 
+
 with st.sidebar:
     st.header("Upcoming Events")
     events = pd.DataFrame(
