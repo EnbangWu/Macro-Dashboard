@@ -94,7 +94,9 @@ def fetch_calendar() -> pd.DataFrame:
         "d2": end.strftime("%Y-%m-%d"),
         "format": "json",
     }
-    url = "https://api.tradingeconomics.com/calendar"
+
+    url = "https://api.tradingeconomics.com/calendar/country/united states"
+
     try:
         r = requests.get(url, params=params, timeout=20)
         r.raise_for_status()
@@ -106,6 +108,9 @@ def fetch_calendar() -> pd.DataFrame:
     df = pd.DataFrame(data)
     if df.empty:
         return df
+
+    df = df[df.get("Country") == "United States"]
+
     df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
     df["date_only"] = df["Date"].dt.date
     df["time"] = df["Date"].dt.strftime("%H:%M")
