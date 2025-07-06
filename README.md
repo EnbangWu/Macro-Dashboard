@@ -25,4 +25,4 @@ If the `streamlit` command is unavailable, you can instead launch the app with:
 python dashboard.py
 ```
 
-The dashboard displays metrics for employment, inflation and interest rates along with trend charts and a sidebar showing a 14‑day economic calendar.
+The dashboard displays metrics for employment, inflation and interest rates along with trend charts and a sidebar showing a 14‑day U.S. economic calendar. Key events such as FOMC meetings, Non Farm Payrolls and ADP Employment changes are highlighted.
