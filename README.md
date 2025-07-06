@@ -25,6 +25,9 @@ If the `streamlit` command is unavailable, you can instead launch the app with:
 python dashboard.py
 ```
 
+The dashboard displays metrics for employment, inflation and interest rates along with trend charts and a sidebar showing a 14‑day U.S. economic calendar of high‑importance events. Key items such as FOMC meetings, Non Farm Payrolls, ADP Employment changes and CPI releases are highlighted.
 
-The dashboard displays metrics for employment, inflation and interest rates along with trend charts and a sidebar showing a 14‑day U.S. economic calendar. Key events such as FOMC meetings, Non Farm Payrolls and ADP Employment changes are highlighted.
-
+Note that the default `guest:guest` key and many free accounts only return a
+limited snapshot of events and may exclude U.S. data entirely. If the sidebar is
+empty, verify that your `TRADING_ECON_API_KEY` grants access to United States
+calendar entries.
