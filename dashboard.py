@@ -9,7 +9,7 @@ for Streamlit Cloud deployments.
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import altair as alt
 import pandas as pd
@@ -80,6 +80,57 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["date", "value"])
     return pd.DataFrame(rows).sort_values("date")
+
+
+CALENDAR_COLUMNS = [
+    "Date",
+    "Country",
+    "Event",
+    "Actual",
+    "Forecast",
+    "TEForecast",
+    "Previous",
+    "Importance",
+    "date_only",
+    "time",
+]
+
+
+@st.cache_data(show_spinner=False)
+def fetch_calendar() -> pd.DataFrame:
+    """Return upcoming U.S. economic events using the Trading Economics API."""
+    api_key = _get_secret("TRADING_ECON_API_KEY") or "guest:guest"
+    today = datetime.utcnow().date()
+    end = today + timedelta(days=14)
+    params = {
+        "c": api_key,
+        "d1": today.strftime("%Y-%m-%d"),
+        "d2": end.strftime("%Y-%m-%d"),
+        "format": "json",
+    }
+    url = "https://api.tradingeconomics.com/calendar/country/united states"
+    try:
+        r = requests.get(url, params=params, timeout=20)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        data = []
+
+    if not isinstance(data, list):
+        data = []
+
+    df = pd.DataFrame(data)
+    if df.empty:
+        return pd.DataFrame(columns=CALENDAR_COLUMNS)
+
+    df = df[df.get("Country") == "United States"]
+    df["Date"] = pd.to_datetime(df.get("Date"), errors="coerce")
+    df["date_only"] = df["Date"].dt.date
+    df["time"] = df["Date"].dt.strftime("%H:%M")
+    for col in CALENDAR_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    return df[CALENDAR_COLUMNS]
 
 
 
@@ -268,14 +319,38 @@ st.altair_chart(combo_chart, use_container_width=True)
 
 
 with st.sidebar:
-    st.header("Upcoming Events")
-    events = pd.DataFrame(
-        {
-            "Event": ["FOMC Meeting", "NFP Release", "CPI Release"],
-            "Date": ["2025-07-30", "2025-07-05", "2025-07-11"],
-        }
-    )
-    st.table(events)
+    st.header("Economic Calendar (next 14 days)")
+    calendar_df = fetch_calendar()
+    if "date_only" not in calendar_df.columns:
+        calendar_df["date_only"] = pd.NaT
+    start = datetime.utcnow().date()
+    for day in pd.date_range(start, periods=14):
+        st.subheader(day.strftime("%b %d, %Y"))
+        day_events = calendar_df[calendar_df["date_only"] == day.date()]
+        if day_events.empty:
+            st.write("No events scheduled")
+            continue
+        for _, ev in day_events.sort_values("Date").iterrows():
+            def _fmt(x):
+                return x if x not in (None, "") else "N/A"
+
+            actual = _fmt(ev.get("Actual"))
+            forecast = _fmt(ev.get("Forecast") or ev.get("TEForecast"))
+            previous = _fmt(ev.get("Previous"))
+            time = ev.get("time") or ""
+            importance = int(ev.get("Importance", 1))
+            dots = "\u2022" * importance
+            highlight = ev.get("Event") in [
+                "FOMC Meeting",
+                "Non Farm Payrolls",
+                "ADP Employment Change",
+            ]
+            style = "color:#ff4b4b;font-weight:bold;" if highlight else ""
+            title = f"<span style='{style}'>{ev.get('Event')}</span>"
+            st.markdown(
+                f"{dots} {time} {ev.get('Country')} - {title}<br>Actual: {actual} | Forecast: {forecast} | Previous: {previous}",
+                unsafe_allow_html=True,
+            )
 
 if __name__ == "__main__":
     import sys
