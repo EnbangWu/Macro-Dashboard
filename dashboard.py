@@ -82,6 +82,7 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("date")
 
 
+
 CALENDAR_COLUMNS = [
     "Date",
     "Country",
@@ -99,6 +100,7 @@ CALENDAR_COLUMNS = [
 @st.cache_data(show_spinner=False)
 def fetch_calendar() -> pd.DataFrame:
     """Return upcoming U.S. economic events using the Trading Economics API."""
+
     api_key = _get_secret("TRADING_ECON_API_KEY") or "guest:guest"
     today = datetime.utcnow().date()
     end = today + timedelta(days=14)
@@ -108,12 +110,15 @@ def fetch_calendar() -> pd.DataFrame:
         "d2": end.strftime("%Y-%m-%d"),
         "format": "json",
     }
+
     url = "https://api.tradingeconomics.com/calendar/country/united states"
+
     try:
         r = requests.get(url, params=params, timeout=20)
         r.raise_for_status()
         data = r.json()
     except Exception:
+
         data = []
 
     if not isinstance(data, list):
@@ -131,6 +136,7 @@ def fetch_calendar() -> pd.DataFrame:
         if col not in df.columns:
             df[col] = pd.NA
     return df[CALENDAR_COLUMNS]
+
 
 
 
@@ -321,8 +327,10 @@ st.altair_chart(combo_chart, use_container_width=True)
 with st.sidebar:
     st.header("Economic Calendar (next 14 days)")
     calendar_df = fetch_calendar()
+
     if "date_only" not in calendar_df.columns:
         calendar_df["date_only"] = pd.NaT
+
     start = datetime.utcnow().date()
     for day in pd.date_range(start, periods=14):
         st.subheader(day.strftime("%b %d, %Y"))
