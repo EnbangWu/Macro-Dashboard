@@ -82,6 +82,60 @@ def fetch_bls(series_id: str) -> pd.DataFrame:
     return pd.DataFrame(rows).sort_values("date")
 
 
+CALENDAR_COLUMNS = [
+    "Date",
+    "Country",
+    "Event",
+    "Actual",
+    "Forecast",
+    "TEForecast",
+    "Previous",
+    "Importance",
+    "date_only",
+    "time",
+]
+
+
+@st.cache_data(show_spinner=False)
+def fetch_calendar() -> pd.DataFrame:
+    """Return upcoming U.S. economic events using the Trading Economics API."""
+    api_key = _get_secret("TRADING_ECON_API_KEY") or "guest:guest"
+    today = datetime.utcnow().date()
+    end = today + timedelta(days=14)
+    params = {
+        "c": api_key,
+        "d1": today.strftime("%Y-%m-%d"),
+        "d2": end.strftime("%Y-%m-%d"),
+        "format": "json",
+    }
+    url = "https://api.tradingeconomics.com/calendar/country/united states"
+    try:
+        r = requests.get(url, params=params, timeout=20)
+        if r.status_code == 403:
+            # Key lacks access to U.S. events
+            return pd.DataFrame(columns=CALENDAR_COLUMNS)
+        r.raise_for_status()
+        data = r.json()
+    except Exception:
+        data = []
+
+    if not isinstance(data, list):
+        data = []
+
+    df = pd.DataFrame(data)
+    if df.empty:
+        return pd.DataFrame(columns=CALENDAR_COLUMNS)
+
+    df = df[df.get("Country") == "United States"]
+    df["Date"] = pd.to_datetime(df.get("Date"), errors="coerce")
+    df["date_only"] = df["Date"].dt.date
+    df["time"] = df["Date"].dt.strftime("%H:%M")
+    for col in CALENDAR_COLUMNS:
+        if col not in df.columns:
+            df[col] = pd.NA
+    return df[CALENDAR_COLUMNS]
+
+
 
 CALENDAR_COLUMNS = [
     "Date",
@@ -330,6 +384,12 @@ with st.sidebar:
 
     if "date_only" not in calendar_df.columns:
         calendar_df["date_only"] = pd.NaT
+    if calendar_df.empty or calendar_df["Date"].max() < pd.Timestamp.utcnow():
+        st.info(
+            "No U.S. events were retrieved. Free or guest API keys may not "
+            "include United States data. Verify your `TRADING_ECON_API_KEY` "
+            "permissions."
+        )
 
     start = datetime.utcnow().date()
     for day in pd.date_range(start, periods=14):
