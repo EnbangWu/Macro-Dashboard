@@ -16,6 +16,8 @@ import pandas as pd
 import requests
 import streamlit as st
 
+st.set_page_config(page_title="US Macro Dashboard", layout="wide")
+
 START_DATE = datetime(2018, 1, 1)
 
 
@@ -200,7 +202,6 @@ def fetch_calendar() -> pd.DataFrame:
 
 
 
-st.set_page_config(page_title="US Macro Dashboard", layout="wide")
 
 # Load series
 
